@@ -8,6 +8,7 @@ using NDesk.Options;
 using System.Data;
 using System.Data.SqlClient;
 using NPOI.SS.UserModel;
+using NPOI.HSSF.UserModel;
 using NPOI.XSSF.UserModel;
 
 namespace sql2excel
@@ -101,7 +102,7 @@ namespace sql2excel
                 { "h|headers", "Enable header output",
                     v => { if (v != null) Settings.OutputHeaders = true; } },
                 { "v|verbose", "increase debug message verbosity",
-                  v => { if (v != null) ++Verbosity; } },
+                    v => { if (v != null) ++Verbosity; } },
             };
 
             try
@@ -210,7 +211,15 @@ namespace sql2excel
             if (!File.Exists(Settings.ExcelFileFullPath) || Settings.OverwriteWorkbook)
             {
                 Debug("{0} Creating new workbook", DateTime.Now.ToString());
-                Workbook = new XSSFWorkbook();
+
+                if (Path.GetExtension(Settings.ExcelFileFullPath).ToUpper() == ".XLS")
+                {
+                    Workbook = new HSSFWorkbook();
+                }
+                else
+                {
+                    Workbook = new XSSFWorkbook();
+                }
             }
             else
             {
@@ -218,7 +227,14 @@ namespace sql2excel
 
                 using (FileStream Stream = new FileStream(Settings.ExcelFileFullPath, FileMode.Open, FileAccess.Read))
                 {
-                    Workbook = new XSSFWorkbook(Stream);
+                    if (Path.GetExtension(Settings.ExcelFileFullPath).ToUpper() == ".XLS")
+                    {
+                        Workbook = new HSSFWorkbook(Stream);
+                    }
+                    else
+                    {
+                        Workbook = new XSSFWorkbook(Stream);
+                    }
                 }
             }
 
@@ -249,7 +265,7 @@ namespace sql2excel
                     case OutputType.MATCHLASTROW:
                         //if the last row in the worksheet contains a sample row, build the List of TemplateFields using it:
                         TemplateFields = GetListOfTemplateFieldsFromSampleRow(Worksheet.GetRow(Worksheet.LastRowNum));
-
+                        
                         if (NumCols != TemplateFields.Count)
                         {
                             throw new MissingFieldException("Number of columns in dataset does not match number of columns in the sample row.");
@@ -280,12 +296,19 @@ namespace sql2excel
 
                     //save the sheet order
                     int Order = Workbook.GetSheetIndex(Worksheet);
+                    Debug("{0} Existing worksheet found in position {1}", DateTime.Now.ToString(), Order);
 
-                    //remove the sheet and replace with a fresh one at the same Order as before
+                    //remove the sheet and replace with a fresh one in the same Order as before
+                    Debug("{0} Removing worksheet", DateTime.Now.ToString());
                     Workbook.RemoveSheetAt(Order);
-                    Workbook.CreateSheet(Worksheet.SheetName);
-                    Workbook.SetSheetOrder(Worksheet.SheetName, Order);
 
+                    Debug("{0} Creating new worksheet", DateTime.Now.ToString());
+                    Workbook.CreateSheet(Settings.Worksheet);
+
+                    Debug("{0} Setting worksheet order to position {1}", DateTime.Now.ToString(), Order);
+                    Workbook.SetSheetOrder(Settings.Worksheet, Order);
+
+                    Debug("{0} Getting worksheet", DateTime.Now.ToString(), Order);
                     Worksheet = Workbook.GetSheetAt(Order);
                 }
 
@@ -385,7 +408,7 @@ namespace sql2excel
 
                 DateTime InsertsEnd = DateTime.Now;
                 double ExcelFillTime = ((TimeSpan)(InsertsEnd - InsertsStart)).TotalSeconds;
-                Debug("{0} Filled workbook with {1} records in {2:0.00} seconds. {3:0} R/s", DateTime.Now.ToString(), NumRows, ExcelFillTime, NumRows / ExcelFillTime);
+                Debug("{0} Filled worksheet with {1} records in {2:0.00} seconds. {3:0} R/s", DateTime.Now.ToString(), NumRows, ExcelFillTime, NumRows / ExcelFillTime);
 
                 DateTime WriteStart = DateTime.Now;
 
@@ -406,7 +429,7 @@ namespace sql2excel
                     ExcelWriteTime = 1;
                 }
 
-                Debug("{0} Wrote workbook with {1} records {2:0.00} seconds. {3:0} R/s", DateTime.Now.ToString(), Worksheet.PhysicalNumberOfRows, ExcelWriteTime, NumRows / ExcelWriteTime);
+                Debug("{0} Wrote worksheet with {1} records in {2:0.00} seconds. {3:0} R/s", DateTime.Now.ToString(), Worksheet.PhysicalNumberOfRows, ExcelWriteTime, NumRows / ExcelWriteTime);
             }
         }
 
