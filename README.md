@@ -1,5 +1,5 @@
 # sql2excel
-.NET command line tool to populate Excel (xlsx) files from a SQL server query without Excel having to be installed.
+.NET command line tool to populate Excel (xlsx/xls) files from a SQL server query without Excel having to be installed.
 
 <pre>
 Usage: sql2excel.exe [OPTIONS]
